@@ -26,12 +26,13 @@ int greenPin = 4;
 int bluePin = 5;
 int dataOffset = 0;
 
+
 #define DATA_SIZE 17
 unsigned long pulse_length;
 byte distances[8]; 
 byte pulse_value[DATA_SIZE];          // holds the binary equivalents
 byte temp = 0;
-
+bool datachange = true;
 
 void setup()
 {
@@ -45,7 +46,33 @@ Serial.begin(115200);
 Serial.println("STARTED");
 }
 
+void setDistance(byte sensorIdx,byte newdistance)
+{
+  if ( distances[sensorIdx] != newdistance )
+  {
+    datachange = true;
+    distances[sensorIdx] = newdistance ;
+  }
+}
 
+void sendSensors()
+{
+  Serial.print("{");
+  for( int i=0; i <8; i++)
+  {
+    if (i>0)
+      Serial.print(";");
+    Serial.print("\"");
+    Serial.print(char(i+'A'));
+    Serial.print("\":");
+    Serial.print(distances[i]);
+    
+  }
+
+
+  Serial.println("} ");
+  datachange = false;
+}
 
 void processCMD()
 {
@@ -56,9 +83,8 @@ if ( (pulse_value[0] == 1 )&(pulse_value[14] == 0 )&(pulse_value[15] == 0 )&(pul
 
     if ( pulse_value[12] == 1) // distance info valid 
     {
-    
+
     byte sensor_id = 0;   //will hold sensor id bin
-    char sensor_id_asc;   //will hold sensor id bin
     if (pulse_value[13]==1) bitSet(sensor_id,0);
     if (pulse_value[11]==1) bitSet(sensor_id,1);
     if (pulse_value[10]==1) bitSet(sensor_id,2);
@@ -74,63 +100,37 @@ if ( (pulse_value[0] == 1 )&(pulse_value[14] == 0 )&(pulse_value[15] == 0 )&(pul
     if (pulse_value[1]==1) bitSet(sensor_dist_c,0);
 
     if (sensor_id == 0) 
-    {
-      sensor_id_asc = 'A';
-      distances[0]=sensor_dist_c;
-    }
+      setDistance(0,sensor_dist_c);
     if (sensor_id == 8)  
-    {
-      sensor_id_asc = 'B';
-      distances[1]=sensor_dist_c;
-    }    
+      setDistance(1,sensor_dist_c);
     if (sensor_id == 4)  
-    {
-      sensor_id_asc = 'C';
-      distances[2]=sensor_dist_c;
-    }
+      setDistance(2,sensor_dist_c);
     if (sensor_id == 12) 
-    {
-      sensor_id_asc = 'D';
-      distances[3]=sensor_dist_c;
-    }    
+      setDistance(3,sensor_dist_c);
     if (sensor_id == 1)  
-    {
-      sensor_id_asc = 'E';
-      distances[4]=sensor_dist_c;
-    }    
+      setDistance(4,sensor_dist_c);
     if (sensor_id == 9)  
-    {
-      sensor_id_asc = 'F';
-      distances[5]=sensor_dist_c;
-    }    
+      setDistance(5,sensor_dist_c);
     if (sensor_id == 5)  
-    {
-      sensor_id_asc = 'G';
-      distances[6]=sensor_dist_c;
-    }
+      setDistance(6,sensor_dist_c);
     if (sensor_id == 13)  
-    {
-      sensor_id_asc = 'H';
-      distances[7]=sensor_dist_c;
+      setDistance(7,sensor_dist_c);
+  
     }
-//    Serial.print(sensor_id_asc);
-//    Serial.print(" : ");
-//    Serial.println(sensor_dist_c);
     
-    }
     else
     {
       // reset sensor values
       for( int i=0; i <8; i++)
       {
-        Serial.print(i);
-        Serial.print(" : ");
-        Serial.print(distances[i]);
-        Serial.print(" ; ");
+        if ( distances[i] != 0)
+          datachange = true;
         distances[i]=0;
+        
       }
-      Serial.println(" ");
+      
     }
+  
   } 
 else
   {
@@ -141,35 +141,41 @@ else
   }
 }
 
+void readSensors()
+  {
+    if (pulse_length > 800) {           //start pulse
+      dataOffset=0;
+   // Serial.println(".");
+      pulse_value[dataOffset] = 1;
+    }
+    else if (pulse_length < 300) 
+      pulse_value[dataOffset] = 1;
+    else 
+      pulse_value[dataOffset] = 0;
+  
+    // store pulse length
+   // pulse_set[dataOffset]=pulse_length;
+    // Debug pulse
+   // if (pulse_length != 0) 
+   //   Serial.print(pulse_value[dataOffset]);
+  
+    dataOffset++;
+    // Command Completed 
+    if (dataOffset == DATA_SIZE )
+    {
+      dataOffset = 0; 
+      processCMD();
+    }
+  }
+
 void loop(){
   
   pulse_length = pulseIn(pin, HIGH);
 
-if (pulse_length != 0) // Data Received
-{
-  if (pulse_length > 800) {           //start pulse
-    dataOffset=0;
- // Serial.println(".");
-    pulse_value[dataOffset] = 1;
-  }
-  else if (pulse_length < 300) 
-    pulse_value[dataOffset] = 1;
-  else 
-    pulse_value[dataOffset] = 0;
+  if (pulse_length != 0) // Data Received
+    readSensors();
 
-  // store pulse length
- // pulse_set[dataOffset]=pulse_length;
-  // Debug pulse
- // if (pulse_length != 0) 
- //   Serial.print(pulse_value[dataOffset]);
-
-  dataOffset++;
-  // Command Completed 
-  if (dataOffset == DATA_SIZE )
-  {
-    dataOffset = 0; 
-    processCMD();
-  }
-}
+  if (datachange)
+    sendSensors();
 
 }
