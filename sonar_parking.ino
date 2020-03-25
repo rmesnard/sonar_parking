@@ -2,8 +2,8 @@
 /*
 Information obtained:
 16 bits total not including start 
-bits 14-16   always  111
-bit 13    0 for reverse 1 for not reverse
+bits 14-16   always  000
+bit 13    0 for front 1 for rear ( part of sensor id )
 bit 12    0 for valid data present 
 bits 9-11 ( + bit 13 )
     sensor A  0
@@ -15,14 +15,13 @@ bits 9-11 ( + bit 13 )
     sensor G  5
     sensor H  13
     
-Blue connected :  EFGH  ( 4 Front )
-Green and Green + Blue connected :  ABCD EH  ( 2 Front + 4 Rear )
+Blue connected alone :  EFGH  ( 4 Front )  Connect to +12v Always
+Green connected with or without blue:  ABCD EH  ( 2 Front + 4 Rear )  controlled by optocopler to send +12v
 
 
 */
 
 int pin = 7;
-int greenPin = 4;
 int bluePin = 5;
 int dataOffset = 0;
 
@@ -30,7 +29,7 @@ int dataOffset = 0;
 #define DATA_SIZE 17
 unsigned long pulse_length;
 byte distances[8]; 
-byte pulse_value[DATA_SIZE];          // holds the binary equivalents
+byte pulse_value[DATA_SIZE];          
 byte temp = 0;
 bool datachange = true;
 
@@ -40,7 +39,12 @@ pinMode(pin, INPUT);
 pinMode(greenPin, OUTPUT);
 pinMode(bluePin, OUTPUT);
 
+// enable 4 rear and 2 front sensors
 digitalWrite(greenPin, HIGH);
+
+// enable 4 front sensors
+//digitalWrite(greenPin, LOW);
+
 
 Serial.begin(115200);
 Serial.println("STARTED");
@@ -153,8 +157,6 @@ void readSensors()
     else 
       pulse_value[dataOffset] = 0;
   
-    // store pulse length
-   // pulse_set[dataOffset]=pulse_length;
     // Debug pulse
    // if (pulse_length != 0) 
    //   Serial.print(pulse_value[dataOffset]);
