@@ -22,10 +22,10 @@ Green connected with or without blue:  ABCD EH  ( 2 Front + 4 Rear )  controlled
 */
 
 int pin = 7;
-int bluePin = 5;
+int greenPin = 5;
 int dataOffset = 0;
 
-
+bool isforward = true;
 #define DATA_SIZE 17
 unsigned long pulse_length;
 byte distances[8]; 
@@ -37,17 +37,16 @@ void setup()
 {
 pinMode(pin, INPUT);
 pinMode(greenPin, OUTPUT);
-pinMode(bluePin, OUTPUT);
 
-// enable 4 rear and 2 front sensors
-digitalWrite(greenPin, HIGH);
+// enable 4 rear and 2 front sensors by default
+digitalWrite(greenPin, LOW);
 
 // enable 4 front sensors
-//digitalWrite(greenPin, LOW);
+//digitalWrite(greenPin, HIGH);
 
 
 Serial.begin(115200);
-Serial.println("STARTED");
+//Serial.println("STARTED");
 }
 
 void setDistance(byte sensorIdx,byte newdistance)
@@ -61,11 +60,15 @@ void setDistance(byte sensorIdx,byte newdistance)
 
 void sendSensors()
 {
-  Serial.print("{");
+
+  if (isforward)
+    Serial.print("{\"mode\":\"F\"");
+  else
+    Serial.print("{\"mode\":\"B\"");
+  
   for( int i=0; i <8; i++)
   {
-    if (i>0)
-      Serial.print(";");
+    Serial.print(";");
     Serial.print("\"");
     Serial.print(char(i+'A'));
     Serial.print("\":");
@@ -179,5 +182,24 @@ void loop(){
 
   if (datachange)
     sendSensors();
+
+  while (Serial.available() > 0) {
+    // look for commands
+    char rcvcmd = Serial.read();
+    if ( rcvcmd == 'B') {
+      // Backward
+      // enable 4 rear sensors
+      isforward=false;
+      digitalWrite(greenPin, HIGH);
+      sendSensors();
+    }
+    if ( rcvcmd == 'F') {
+      // Forward
+      // enable 4 front and 2 front sensors
+      isforward=true;
+      digitalWrite(greenPin, LOW);
+      sendSensors();
+    }
+  }    
 
 }
